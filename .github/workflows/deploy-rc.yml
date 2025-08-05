@@ -1,0 +1,36 @@
+name: Deploy RC to EC2
+
+on:
+  workflow_run:
+    workflows: ["Build and Release RC"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download RC Artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-release.yml
+          name: rc-build
+          run_id: ${{ github.event.workflow_run.id }}
+          path: ./deploy
+
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Deploy to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i key.pem ./deploy/rc-build.tar.gz ubuntu@${{ secrets.SERVER_IP }}:/tmp/
+          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ secrets.SERVER_IP }} << 'EOF'
+            cd /tmp
+            tar -xzf rc-build.tar.gz
+            bash ~/demo-rc-app/install.sh
+          EOF
+

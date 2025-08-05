@@ -1,0 +1,28 @@
+name: Build and Release RC
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-rc*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create RC Artifact
+        run: |
+          mkdir release
+          echo "RC Version: $GITHUB_REF_NAME" > release/version.txt
+          echo "Hello from RC build" > release/app.txt
+          tar -czf rc-build.tar.gz release/
+
+      - name: Upload RC Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-build
+          path: rc-build.tar.gz
+
